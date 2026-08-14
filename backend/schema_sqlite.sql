@@ -305,3 +305,42 @@ CREATE TABLE IF NOT EXISTS perpetual_portfolio (
     created_at TEXT DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS ix_perpetual_portfolio_user ON perpetual_portfolio (user_id, created_at DESC);
+
+-- ===== 二开：基金规则引擎（补仓3档金字塔 + 止盈） =====
+
+-- 每只基金的补仓/止盈计划参数（对应 Excel「持仓总览」L/M/N/O 列）
+CREATE TABLE IF NOT EXISTS fund_plans (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    portfolio_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    fund_code TEXT NOT NULL,
+    fund_type TEXT DEFAULT '',         -- 场外 / 场外(QDII)
+    sector TEXT DEFAULT '',            -- 板块
+    planned_amount REAL DEFAULT 0,     -- 计划补仓总资金（元）
+    used_amount REAL DEFAULT 0,        -- 已用补仓资金（元）
+    valuation_pct REAL,                -- 板块估值百分位（0-100，手工每月更新）
+    note TEXT DEFAULT '',
+    updated_at TEXT DEFAULT (datetime('now')),
+    UNIQUE (portfolio_id, fund_code)
+);
+
+-- 操作规则（对应 Excel「操作规则」页：每只基金 补仓1/2/3 档 + 止盈）
+CREATE TABLE IF NOT EXISTS fund_rules (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    portfolio_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    fund_code TEXT NOT NULL,
+    fund_name TEXT DEFAULT '',
+    rule_type TEXT NOT NULL,           -- add_1/add_2/add_3/take_profit
+    trigger_pct REAL NOT NULL,         -- 触发条件（持仓收益率）：-0.10/-0.20/-0.30/+0.25
+    trigger_nav REAL NOT NULL,         -- 触发净值 = 成本价 × (1 + trigger_pct)
+    fund_pct REAL DEFAULT 0,           -- 动用资金比例（占计划补仓资金）
+    amount REAL DEFAULT 0,             -- 触发金额（元）
+    action TEXT DEFAULT '',            -- 操作动作描述
+    executed INTEGER DEFAULT 0,        -- 0=未执行 1=已执行
+    executed_date TEXT,
+    note TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now')),
+    UNIQUE (portfolio_id, fund_code, rule_type)
+);
+CREATE INDEX IF NOT EXISTS ix_fund_rules_portfolio ON fund_rules (portfolio_id, fund_code);

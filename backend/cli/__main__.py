@@ -19,7 +19,7 @@ if _env_file.exists():
         key, _, value = line.partition("=")
         os.environ.setdefault(key.strip(), value.strip())
 
-from . import ai_analyze, analyze, bundle, fetch, historical, holdings, perpetual, preset, trade
+from . import ai_analyze, analyze, bundle, fetch, historical, holdings, import_xlsx, perpetual, preset, rules, trade
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -173,6 +173,20 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--pid", type=int, required=True)
     p.add_argument("--id", type=int, required=True, help="交易记录 id")
     p.set_defaults(fn=trade.cmd_txn_del)
+
+    # import-xlsx
+    g = groups.add_parser("import-xlsx", help="从基金持仓规则表.xlsx 导入实盘+规则").add_subparsers(dest="cmd", required=True)
+    p = g.add_parser("run", parents=[common], help="执行导入（默认拒绝覆盖同名实盘）")
+    p.add_argument("--file", required=True, help="xlsx 文件路径")
+    p.add_argument("--name", default="我的持仓", help="实盘名称（默认 我的持仓）")
+    p.add_argument("--reset", action="store_true", help="同名实盘已存在时清空重建")
+    p.set_defaults(fn=import_xlsx.cmd_run)
+
+    # rules
+    g = groups.add_parser("rules", help="规则引擎：总览/提醒/每日刷新").add_subparsers(dest="cmd", required=True)
+    g.add_parser("overview", parents=[common], help="全部基金规则触发状态").set_defaults(fn=rules.cmd_overview)
+    g.add_parser("alerts", parents=[common], help="已触发未执行规则").set_defaults(fn=rules.cmd_alerts)
+    g.add_parser("daily", parents=[common], help="每日刷新：拉净值+评估+macOS通知").set_defaults(fn=rules.cmd_daily)
 
     return parser
 
