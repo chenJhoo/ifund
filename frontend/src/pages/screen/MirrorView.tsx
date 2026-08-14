@@ -478,30 +478,30 @@ export default function MirrorView({
 
             {/* 核心标签 */}
             <Space wrap size={[8, 8]}>
-              {r.luck_verdict && (
+              {!!r.luck_verdict && (
                 <Tag color={luckColor[String(r.luck_verdict)] ?? 'default'}>
-                  运气判断：{luckLabel[String(r.luck_verdict)] ?? r.luck_verdict}
+                  运气判断：{luckLabel[String(r.luck_verdict)] ?? String(r.luck_verdict)}
                 </Tag>
               )}
-              {r.concentration && (
+              {!!r.concentration && (
                 <Tag color={concColor[String(r.concentration)] ?? 'default'}>
-                  集中度：{concLabel[String(r.concentration)] ?? r.concentration}
+                  集中度：{concLabel[String(r.concentration)] ?? String(r.concentration)}
                 </Tag>
               )}
-              {r.fund_kind && (
+              {!!r.fund_kind && (
                 <Tag color={kindColor[String(r.fund_kind)] ?? 'default'}>
-                  基金属性：{kindLabel[String(r.fund_kind)] ?? r.fund_kind}
+                  基金属性：{kindLabel[String(r.fund_kind)] ?? String(r.fund_kind)}
                 </Tag>
               )}
-              {r.confidence && <Tag>置信度：{r.confidence}</Tag>}
-              {r.scale_risk && (
+              {!!r.confidence && <Tag>置信度：{String(r.confidence)}</Tag>}
+              {!!r.scale_risk && (
                 <Tag color={scaleColor[String(r.scale_risk)] ?? 'default'}>
-                  规模：{scaleLabel[String(r.scale_risk)] ?? r.scale_risk}
+                  规模：{scaleLabel[String(r.scale_risk)] ?? String(r.scale_risk)}
                 </Tag>
               )}
-              {r.style_stability && (
+              {!!r.style_stability && (
                 <Tag color={styleColor[String(r.style_stability)] ?? 'default'}>
-                  风格：{styleLabel[String(r.style_stability)] ?? r.style_stability}
+                  风格：{styleLabel[String(r.style_stability)] ?? String(r.style_stability)}
                 </Tag>
               )}
             </Space>
@@ -516,9 +516,8 @@ export default function MirrorView({
 
             <Divider style={{ margin: '12px 0' }} />
 
-            {/* 经理信息 */}
             <Descriptions column={2} size="small" style={{ fontSize: 13 }} labelStyle={{ opacity: 0.65 }}>
-              {r.manager && <Descriptions.Item label="经理">{String(r.manager)}</Descriptions.Item>}
+              {!!r.manager && <Descriptions.Item label="经理">{String(r.manager)}</Descriptions.Item>}
               {r.tenure_years != null && <Descriptions.Item label="任职年限">{Number(r.tenure_years).toFixed(1)} 年</Descriptions.Item>}
               {r.is_original != null && <Descriptions.Item label="是否原装">{Number(r.is_original) ? '是' : '否'}</Descriptions.Item>}
               {r.is_comanaged != null && <Descriptions.Item label="是否共管">{Number(r.is_comanaged) ? '是' : '否'}</Descriptions.Item>}
@@ -528,25 +527,25 @@ export default function MirrorView({
 
             {/* 详细理由 */}
             <Space direction="vertical" style={{ width: '100%' }} size={10}>
-              {r.skill_reason && (
+              {!!r.skill_reason && (
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4, opacity: 0.85 }}>归因理由</div>
                   <div style={{ fontSize: 13, lineHeight: 1.6, opacity: 0.8 }}>{String(r.skill_reason)}</div>
                 </div>
               )}
-              {r.concentration_reason && (
+              {!!r.concentration_reason && (
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4, opacity: 0.85 }}>集中度分析</div>
                   <div style={{ fontSize: 13, lineHeight: 1.6, opacity: 0.8 }}>{String(r.concentration_reason)}</div>
                 </div>
               )}
-              {r.hard_thesis && (
+              {!!r.hard_thesis && (
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4, opacity: 0.85 }}>硬实力逻辑</div>
                   <div style={{ fontSize: 13, lineHeight: 1.6, opacity: 0.8 }}>{String(r.hard_thesis)}</div>
                 </div>
               )}
-              {r.turnover_note && (
+              {!!r.turnover_note && (
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4, opacity: 0.85 }}>换手备注</div>
                   <div style={{ fontSize: 13, lineHeight: 1.6, opacity: 0.8 }}>{String(r.turnover_note)}</div>
@@ -554,7 +553,7 @@ export default function MirrorView({
               )}
             </Space>
 
-            {r.data_basis && (
+            {!!r.data_basis && (
               <>
                 <Divider style={{ margin: '12px 0' }} />
                 <div style={{ fontSize: 11, opacity: 0.45 }}>

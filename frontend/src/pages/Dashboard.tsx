@@ -10,12 +10,14 @@ import {
   FundOutlined,
   KeyOutlined,
   LogoutOutlined,
+  NotificationOutlined,
   TeamOutlined,
   WalletOutlined,
 } from '@ant-design/icons'
 import { FundPage } from './fund'
 import WorkbenchPage from './workbench/WorkbenchPage'
 import HoldingsPage from './reconcile/HoldingsPage'
+import RulesPage from './rules/RulesPage'
 import PerpetualPage from './perpetual/PerpetualPage'
 import ManagerPage from './manager/ManagerPage'
 import IndustryPage from './IndustryPage'
@@ -74,6 +76,7 @@ export default function Dashboard() {
                 ],
               },
               { key: 'holdings', icon: <WalletOutlined />, label: '实盘' },
+              { key: 'rules', icon: <NotificationOutlined />, label: '规则看板' },
               {
                 key: 'auxiliary',
                 icon: <DatabaseOutlined />,
@@ -95,6 +98,7 @@ export default function Dashboard() {
             <Route path="/perpetual" element={<PerpetualPage />} />
             <Route path="/manager" element={<ManagerPage />} />
             <Route path="/holdings" element={<HoldingsPage />} />
+            <Route path="/rules" element={<RulesPage />} />
             <Route path="/trade_calendar" element={<TradeCalendar />} />
             <Route path="/industry" element={<IndustryPage />} />
             <Route path="/tokens" element={<TokensPage />} />

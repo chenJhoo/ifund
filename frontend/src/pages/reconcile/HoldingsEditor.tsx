@@ -99,7 +99,7 @@ export default function HoldingsEditor({
           ...(cost !== undefined ? { cost } : {}),
         }
       })
-      .filter((r) => (r.fund_code || r.fund_name) && r.market_value > 0)
+      .filter((r) => ('fund_code' in r ? r.fund_code : r.fund_name) && r.market_value > 0)
     if (rows.length === 0) {
       message.warning('未解析到有效行（格式：名称或代码 市值 [持有收益]，每行一只）')
       return

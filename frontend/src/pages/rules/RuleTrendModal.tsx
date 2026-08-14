@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Empty, Modal, Segmented, Spin, Statistic, theme } from 'antd'
+import { Alert, Empty, Modal, Segmented, Space, Spin, Statistic, Tag, theme } from 'antd'
 import dayjs from 'dayjs'
 import {
   Area,
@@ -11,7 +11,9 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import request from '../../../api/request'
+import request from '../../api/request'
+import { RULE_COLORS, ruleLabel, sortRules } from './types'
+import type { RuleOverviewItem } from './types'
 
 interface NavPoint {
   date: string
@@ -19,8 +21,7 @@ interface NavPoint {
 }
 
 interface Props {
-  code: string | null
-  name?: string
+  fund: RuleOverviewItem | null
   open: boolean
   onClose: () => void
 }
@@ -35,15 +36,21 @@ const RANGES = [
 
 const UP = '#f5222d'   // 涨红
 const DOWN = '#52c41a' // 跌绿
+const COST = '#1677ff' // 成本价实线
 
-/** 交互式净值走势：累计净值折线 + 十字准星（横竖虚线），hover 看每日日期/净值/较首日涨跌。 */
-export default function NavTrendModal({ code, name, open, onClose }: Props) {
+/**
+ * 规则看板专用净值走势：在历史净值曲线上叠加成本价实线与 4 条规则触发净值虚线，
+ * 直观看到当前净值相对各档位的位置。QDII 基金提示净值日期滞后。
+ */
+export default function RuleTrendModal({ fund, open, onClose }: Props) {
   const { token } = theme.useToken()
   const [data, setData] = useState<NavPoint[]>([])
   const [loading, setLoading] = useState(false)
   const [range, setRange] = useState(12)
-  // 当前鼠标命中的点（驱动十字准星 + 顶部数值）
   const [active, setActive] = useState<NavPoint | null>(null)
+
+  const code = fund?.fund_code ?? null
+  const isQdii = (fund?.fund_type ?? '').includes('QDII')
 
   useEffect(() => {
     if (!open || !code) return
@@ -56,7 +63,6 @@ export default function NavTrendModal({ code, name, open, onClose }: Props) {
       .finally(() => setLoading(false))
   }, [open, code])
 
-  // 按区间切片（不足两点则回退全量）
   const sliced = useMemo(() => {
     const series = data.filter((p) => Number.isFinite(p.nav))
     if (!range || series.length === 0) return series
@@ -69,7 +75,6 @@ export default function NavTrendModal({ code, name, open, onClose }: Props) {
   const last = sliced[sliced.length - 1]?.nav ?? 0
   const lineColor = last >= first ? UP : DOWN
 
-  // 顶部展示：默认末点，hover 时跟随准星
   const shown = active ?? sliced[sliced.length - 1] ?? null
   const shownPct = shown && first ? ((shown.nav - first) / first) * 100 : 0
 
@@ -77,15 +82,31 @@ export default function NavTrendModal({ code, name, open, onClose }: Props) {
   const tickGap = Math.max(1, Math.floor(sliced.length / 8))
   const axisTick = { fontSize: 11, fill: token.colorTextTertiary }
 
+  const rules = sortRules(fund?.rules ?? [])
+  const costPrice = fund?.cost_price ?? null
+
   return (
     <Modal
       open={open}
       onCancel={onClose}
       footer={null}
-      width={720}
-      title={`${name ?? ''} 净值走势`}
+      width={760}
+      title={
+        <Space size="small">
+          <span>{fund?.fund_name ?? ''}（{code ?? ''}）净值走势</span>
+          {fund?.status && <Tag color={statusColor(fund.status)}>{fund.status}</Tag>}
+        </Space>
+      }
       destroyOnClose
     >
+      {isQdii && (
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginBottom: 8 }}
+          message="QDII 基金净值日期滞后 1-2 个交易日属正常"
+        />
+      )}
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
         <div style={{ display: 'flex', gap: 24 }}>
           <Statistic
@@ -102,6 +123,16 @@ export default function NavTrendModal({ code, name, open, onClose }: Props) {
             prefix={shownPct >= 0 ? '+' : ''}
             valueStyle={{ fontSize: 22, color: shownPct >= 0 ? UP : DOWN }}
           />
+          {costPrice != null && fund?.latest_nav != null && (
+            <Statistic
+              title={`持仓收益（成本 ${costPrice.toFixed(4)}）`}
+              value={(fund.latest_nav / costPrice - 1) * 100}
+              precision={2}
+              suffix="%"
+              prefix={fund.latest_nav >= costPrice ? '+' : ''}
+              valueStyle={{ fontSize: 22, color: fund.latest_nav >= costPrice ? UP : DOWN }}
+            />
+          )}
         </div>
         <Segmented size="small" options={RANGES} value={range} onChange={(v) => setRange(v as number)} />
       </div>
@@ -113,7 +144,7 @@ export default function NavTrendModal({ code, name, open, onClose }: Props) {
       ) : sliced.length < 2 ? (
         <Empty description="暂无净值数据（可能尚未采集）" style={{ padding: 60 }} />
       ) : (
-        <ResponsiveContainer width="100%" height={320}>
+        <ResponsiveContainer width="100%" height={340}>
           <AreaChart
             data={sliced}
             margin={{ top: 8, right: 16, left: 0, bottom: 0 }}
@@ -126,7 +157,7 @@ export default function NavTrendModal({ code, name, open, onClose }: Props) {
             onMouseLeave={() => setActive(null)}
           >
             <defs>
-              <linearGradient id="navFill" x1="0" y1="0" x2="0" y2="1">
+              <linearGradient id="ruleNavFill" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={lineColor} stopOpacity={0.22} />
                 <stop offset="100%" stopColor={lineColor} stopOpacity={0.02} />
               </linearGradient>
@@ -159,14 +190,46 @@ export default function NavTrendModal({ code, name, open, onClose }: Props) {
                 )
               }}
             />
-            {/* 十字准星：竖线由 Tooltip cursor 提供，横线用 ReferenceLine 跟随当前点 */}
             {active && (
               <ReferenceLine y={active.nav} stroke={token.colorTextTertiary} strokeDasharray="3 3" ifOverflow="extendDomain" />
             )}
-            <Area type="monotone" dataKey="nav" stroke={lineColor} strokeWidth={1.6} fill="url(#navFill)" isAnimationActive={false} />
+            {/* 成本价实线 */}
+            {costPrice != null && (
+              <ReferenceLine
+                y={costPrice}
+                stroke={COST}
+                strokeWidth={1.4}
+                ifOverflow="extendDomain"
+                label={{ value: `成本 ${costPrice.toFixed(4)}`, position: 'insideTopRight', fontSize: 11, fill: COST }}
+              />
+            )}
+            {/* 4 条规则触发净值虚线：补仓红色系、止盈绿色 */}
+            {rules.map((r) => (
+              <ReferenceLine
+                key={r.id}
+                y={r.trigger_nav}
+                stroke={RULE_COLORS[r.rule_type]}
+                strokeDasharray="6 3"
+                ifOverflow="extendDomain"
+                label={{
+                  value: `${ruleLabel(r)} ${r.trigger_nav.toFixed(4)}`,
+                  position: r.rule_type === 'take_profit' ? 'insideTopLeft' : 'insideBottomLeft',
+                  fontSize: 11,
+                  fill: RULE_COLORS[r.rule_type],
+                }}
+              />
+            ))}
+            <Area type="monotone" dataKey="nav" stroke={lineColor} strokeWidth={1.6} fill="url(#ruleNavFill)" isAnimationActive={false} />
           </AreaChart>
         </ResponsiveContainer>
       )}
     </Modal>
   )
+}
+
+function statusColor(status: string): string {
+  if (status === '触发止盈') return 'gold'
+  if (status.startsWith('触发补仓')) return 'red'
+  if (status === '数据缺失') return 'orange'
+  return 'blue'
 }

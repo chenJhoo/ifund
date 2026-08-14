@@ -5,6 +5,7 @@ import FundQueryCard from './FundQueryCard'
 import PresetPanel from './components/PresetPanel'
 import DataFetchPanel from './components/DataFetchPanel'
 import FundDetailModal from './components/FundDetailModal'
+import RuleAlertsCard from '../rules/RuleAlertsCard'
 
 export default function FundPage() {
   const data = useFundData()
@@ -12,6 +13,8 @@ export default function FundPage() {
 
   return (
     <Space direction="vertical" className="w-full" style={{ width: '100%' }} size="middle">
+      <RuleAlertsCard />
+
       <PresetPanel
         presets={data.presets}
         activeId={data.activePresetId}

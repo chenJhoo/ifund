@@ -102,7 +102,7 @@ export default function BacktestCard({ data }: { data: BacktestResult }) {
           <YAxis domain={['auto', 'auto']} tickFormatter={(v) => `${v}%`} width={48} tick={axisTick} />
           <Tooltip
             labelFormatter={(d) => `日期 ${d}`}
-            formatter={(v: number, name) => [`${v.toFixed(2)}%`, name === 'strat' ? '动量调权' : '等权']}
+            formatter={(v, name) => [`${Number(v).toFixed(2)}%`, name === 'strat' ? '动量调权' : '等权']}
             contentStyle={tooltipStyle}
             labelStyle={{ color: token.colorTextSecondary }}
             itemStyle={{ color: token.colorText }}
