@@ -58,3 +58,51 @@ cd /Users/huangcheng/Desktop/ifund/backend
 - Commit messages in **Chinese**, conventional prefix: `feat:`, `fix:`, `docs:`, `refactor:`.
 - Single `main` branch; no PR workflow in place.
 - `backend/.env` is gitignored — copy from `backend/.env.example` if present.
+
+## 二开：基金规则引擎（chenJhoo fork，2026-08）
+
+在上游底座上叠加了"持仓规则平台"能力：从 `基金持仓规则表.xlsx` 导入真实持仓，按
+补仓3档金字塔（-10%/-20%/-30%）+ 止盈（+25%）规则做触发判定、可视化和每日提醒。
+
+### 数据流
+
+```
+基金持仓规则表.xlsx
+  └─ cli/import_xlsx.py（ifund import-xlsx run，一次性导入，--reset 可重建）
+       ├─ holding_txns   每只基金一笔建仓 buy（amount=成本价×份额, nav=成本价, shares=份额）
+       ├─ fund_plans     计划/已用补仓资金、板块、类型、估值百分位（新表）
+       └─ fund_rules     44 条规则（新表，UNIQUE(portfolio_id, fund_code, rule_type)）
+holdings_compute（上游）合成持仓 → rules/service.py 评估 → /api/rules/* → 前端 pages/rules/
+```
+
+### 规则引擎口径（与 Excel 一致，改逻辑先同步 tests/test_rules.py）
+
+- 持仓收益率 = 最新净值 ÷ (合成成本 ÷ 合成份额) − 1（移动平均成本）。
+- 补仓档触发：净值 **≤** 触发净值；止盈：净值 **≥** 触发净值（边界取等）。
+- 状态取**最深**触发档（如 -42% → 触发补仓第3档）；止盈与补仓天然互斥，止盈优先展示。
+- `executed=1` 的规则不再进 alerts；执行登记（POST `/api/rules/<id>/execute`）联动：
+  写一笔 buy/sell 交易 + 置已执行 + `fund_plans.used_amount` 累加（仅补仓）。
+- 估值百分位（fund_plans.valuation_pct）每月手工更新，只影响纪律提示，不参与触发判定。
+
+### 新增文件
+
+- 后端：`app/rules/`（`service.py` 评估 + `api/router.py` 蓝图，挂在 `/api/rules`）、
+  `cli/import_xlsx.py`、`cli/rules.py`（overview/alerts/daily）、`tests/test_rules.py`
+  （`./venv/bin/python -m unittest tests.test_rules`）。
+- 表：`fund_rules`、`fund_plans`（追加在 `schema_sqlite.sql` 末尾，启动幂等建表）。
+- 前端：`pages/rules/`（RulesPage 看板 / RuleTrendModal 净值走势+触发线 / RuleAlertsCard
+  首页提醒卡）；Dashboard 注册 `/rules` 菜单，FundPage 首页挂 RuleAlertsCard。
+- 运维：`daily.sh`（launchd `com.ifund.daily-rules`，每日 21:35 拉净值+评估+macOS 通知）。
+
+### 运维与坑
+
+- 常驻服务标签是 **`com.ifund.server`**（不是上游默认的 com.ifund.backend）：macOS TCC
+  会把"桌面文件夹访问拒绝"缓存在 launchd 标签上，一旦被拒过，同标签永远 EPERM，换标签即解。
+- `app/db` 抽象层**参数风格不一致**：`select/select_one` 用 `eq.xxx` 前缀（也兼容裸值），
+  而 `update/delete` 的 filters 是**裸值等值**（传 `eq.1` 会静默不匹配）。新代码注意。
+- 天天基金盘中估值接口（fundgz / akshare fund_value_estimation_em / fundmobapi）已随监管
+  全部下线，盘中估算功能当前为**每日净值降级模式**；要恢复只能按基金配跟踪指数近似。
+- akshare 必须在子进程 worker 里跑（上游约束）；`cli/rules.py daily` 里直接调
+  `fund_nav.fetch.worker._process_one` 是 CLI 直连场景，安全。
+- 验证清单：`./backend/venv/bin/pylint app`（≥上游基线即可）、`cd frontend && npx tsc --noEmit
+  && npm run build`、后端改完 `./service.sh restart`（waitress 无热重载）。
