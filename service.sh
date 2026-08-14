@@ -19,9 +19,9 @@ set -e
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 BACKEND="$ROOT/backend"
-WAITRESS="$BACKEND/venv/bin/waitress-serve"
+WAITRESS="$BACKEND/venv/bin/python"
 PORT=8000
-LABEL="com.ifund.backend"
+LABEL="com.ifund.server"
 UID_NUM="$(id -u)"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 LOGDIR="$ROOT/logs"
@@ -38,6 +38,7 @@ write_plist() {
   <key>ProgramArguments</key>
   <array>
     <string>$WAITRESS</string>
+    <string>-m</string><string>waitress</string>
     <string>--listen=127.0.0.1:$PORT</string>
     <string>app.main:app</string>
   </array>
@@ -55,7 +56,7 @@ PLIST
 
 case "${1:-}" in
   install)
-    [ -x "$WAITRESS" ] || { echo "缺少 waitress，先装：$BACKEND/venv/bin/pip install -r $BACKEND/requirements.txt"; exit 1; }
+    [ -x "$BACKEND/venv/bin/waitress-serve" ] || { echo "缺少 waitress，先装：$BACKEND/venv/bin/pip install -r $BACKEND/requirements.txt"; exit 1; }
     write_plist
     launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true
     launchctl bootstrap "$DOMAIN" "$PLIST"
